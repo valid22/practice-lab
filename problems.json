@@ -1,0 +1,334 @@
+[
+  {
+    "id": "simple-network",
+    "title": "Simple Network",
+    "difficulty": "Easy",
+    "topics": [
+      "Graphs",
+      "Hash maps"
+    ],
+    "statement": "Each node in a directed network has at most one outgoing link. Starting at `start_node_id`, follow the links until the current node has nowhere to go or the next link would revisit a node.\n\nReturn the **current node** when either condition occurs. For instance, if you start at 8 and follow `8 → 12 → 19 → 12`, return 19 because taking its outgoing link would revisit 12.\n\n## Function\n\nImplement `compute(start_node_id, from_ids, to_ids)` and return one integer. The two arrays describe links by index. The pair at index `i` gives the link `from_ids[i] → to_ids[i]`.\n\n## Constraints\n\n- Node IDs are integers from 2 through 4,999, with gaps allowed.\n- The arrays have equal length, and each source occurs at most once.\n- No link goes directly from a node to itself.\n- The start node may have no links, even if the input contains links elsewhere.",
+    "source": "https://www.reddit.com/r/InterviewDB/comments/1x011r4/openai_new_grad_coderpad_oa_questions/",
+    "starter": "def compute(start_node_id, from_ids, to_ids):\n    # Write your solution here.\n    pass\n",
+    "samples": [
+      {
+        "name": "Reach an endpoint",
+        "expected": 52,
+        "args": [
+          4,
+          [
+            4,
+            11,
+            31,
+            5
+          ],
+          [
+            11,
+            31,
+            52,
+            31
+          ]
+        ]
+      },
+      {
+        "name": "Stop before revisiting",
+        "expected": 19,
+        "args": [
+          8,
+          [
+            8,
+            12,
+            19,
+            34
+          ],
+          [
+            12,
+            19,
+            12,
+            19
+          ]
+        ]
+      },
+      {
+        "name": "Start has no outgoing link",
+        "expected": 9,
+        "args": [
+          9,
+          [
+            4
+          ],
+          [
+            6
+          ]
+        ]
+      },
+      {
+        "name": "Cycle includes the start",
+        "expected": 10,
+        "args": [
+          7,
+          [
+            10,
+            7
+          ],
+          [
+            7,
+            10
+          ]
+        ]
+      }
+    ],
+    "function": "compute"
+  },
+  {
+    "id": "four-shop-routes",
+    "title": "Count Four Shop Routes",
+    "difficulty": "Medium",
+    "topics": [
+      "Graphs",
+      "Path counting"
+    ],
+    "statement": "Your town has four types of shop. Count how many routes let you visit **one shop of each type in exactly four stops**. You can start at any shop, and each pair of consecutive stops must share a road.\n\nA route is an ordered list of shop indices. Traversing the same shops in reverse counts as another route. In a town with four differently typed shops connected in a single chain, the answer is 2.\n\n## Function\n\nImplement `count_routes(shops, roads)` and return the number of valid routes. The value `shops[i]` gives shop `i`'s type, numbered 0 through 3. Each pair `[u, v]` in `roads` connects shops `u` and `v` in both directions.\n\n## Constraints\n\n- There are 1 to 50 shops and at most 250 roads.\n- Each road joins two different shops. Each unordered pair appears at most once.\n- Shop types may be missing or may occur more than once.",
+    "source": "https://www.reddit.com/r/InterviewDB/comments/1x011r4/openai_new_grad_coderpad_oa_questions/",
+    "starter": "def count_routes(shops, roads):\n    # Write your solution here.\n    pass\n",
+    "samples": [
+      {
+        "name": "Two directions",
+        "expected": 2,
+        "args": [
+          [
+            0,
+            2,
+            1,
+            3
+          ],
+          [
+            [
+              0,
+              1
+            ],
+            [
+              1,
+              2
+            ],
+            [
+              2,
+              3
+            ]
+          ]
+        ]
+      },
+      {
+        "name": "Alternative stops of one type",
+        "expected": 4,
+        "args": [
+          [
+            0,
+            1,
+            1,
+            2,
+            3
+          ],
+          [
+            [
+              0,
+              1
+            ],
+            [
+              0,
+              2
+            ],
+            [
+              1,
+              3
+            ],
+            [
+              2,
+              3
+            ],
+            [
+              3,
+              4
+            ]
+          ]
+        ]
+      },
+      {
+        "name": "Four-shop ring",
+        "expected": 8,
+        "args": [
+          [
+            0,
+            1,
+            2,
+            3
+          ],
+          [
+            [
+              0,
+              1
+            ],
+            [
+              1,
+              2
+            ],
+            [
+              2,
+              3
+            ],
+            [
+              3,
+              0
+            ]
+          ]
+        ]
+      },
+      {
+        "name": "Missing a type",
+        "expected": 0,
+        "args": [
+          [
+            0,
+            1,
+            1,
+            2
+          ],
+          [
+            [
+              0,
+              1
+            ],
+            [
+              1,
+              2
+            ],
+            [
+              2,
+              3
+            ]
+          ]
+        ]
+      }
+    ],
+    "function": "count_routes"
+  },
+  {
+    "id": "microorganism-simulation",
+    "title": "Microorganism Simulation",
+    "difficulty": "Medium",
+    "topics": [
+      "Arrays",
+      "Simulation"
+    ],
+    "statement": "A row of microorganisms evolves in rounds. Each organism has a family letter and a positive size. Find the family and size of the largest survivor after the row stops changing.\n\n## Round rules\n\n- Give surviving organisms one turn each, scanning from left to right. An organism removed before its turn loses that turn.\n- On its turn, an organism checks its current left neighbor, then its current right neighbor. It eats the first neighbor that belongs to a different family, is strictly smaller, and has not eaten this round.\n- Remove the target and add its size to the eater immediately. Continue with the organism now directly to the eater's right. Later turns use the updated row.\n- Clear the record of which survivors ate at the start of the next round. Stop after a full round with no removals.\n\nFor example, with `A 2, B 6, C 4`, B eats A first and reaches size 8. On the next round B eats C, leaving `B 12`.\n\n## Function\n\nImplement `largest_survivor(organisms)`. Each entry in `organisms` is a pair `[family, size]` in left-to-right order. Return the winning family and size as a string, with a single space between them.\n\n## Constraints\n\n- There are 1 to 20 organisms.\n- Each family is one uppercase English letter. Sizes are integers from 1 through 1,000,000.\n- The final maximum is unique.",
+    "source": "https://www.reddit.com/r/InterviewDB/comments/1x011r4/openai_new_grad_coderpad_oa_questions/",
+    "starter": "def largest_survivor(organisms):\n    # Write your solution here.\n    pass\n",
+    "samples": [
+      {
+        "name": "Left neighbor first",
+        "expected": "B 12",
+        "args": [
+          [
+            [
+              "A",
+              2
+            ],
+            [
+              "B",
+              6
+            ],
+            [
+              "C",
+              4
+            ]
+          ]
+        ]
+      },
+      {
+        "name": "An eater survives its round",
+        "expected": "B 13",
+        "args": [
+          [
+            [
+              "A",
+              2
+            ],
+            [
+              "B",
+              5
+            ],
+            [
+              "C",
+              6
+            ]
+          ]
+        ]
+      },
+      {
+        "name": "Same-family and equal-size barriers",
+        "expected": "A 9",
+        "args": [
+          [
+            [
+              "A",
+              9
+            ],
+            [
+              "A",
+              4
+            ],
+            [
+              "B",
+              4
+            ],
+            [
+              "B",
+              6
+            ]
+          ]
+        ]
+      },
+      {
+        "name": "Several rounds of consumption",
+        "expected": "A 14",
+        "args": [
+          [
+            [
+              "A",
+              1
+            ],
+            [
+              "B",
+              2
+            ],
+            [
+              "A",
+              3
+            ],
+            [
+              "C",
+              2
+            ],
+            [
+              "B",
+              6
+            ]
+          ]
+        ]
+      },
+      {
+        "name": "One organism",
+        "expected": "Z 7",
+        "args": [
+          [
+            [
+              "Z",
+              7
+            ]
+          ]
+        ]
+      }
+    ],
+    "function": "largest_survivor"
+  }
+]
