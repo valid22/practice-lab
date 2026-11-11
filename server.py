@@ -20,7 +20,14 @@ STATIC = {
     "/": ("index.html", "text/html"),
     "/style.css": ("style.css", "text/css"),
     "/app.js": ("app.js", "text/javascript"),
+    "/catalog.js": ("catalog.js", "text/javascript"),
+    "/companies.js": ("companies.js", "text/javascript"),
 }
+PROBLEM_ROUTE = re.compile(r"/problems/([a-z0-9-]+)/?")
+API_PROBLEM_ROUTE = re.compile(r"/api" + PROBLEM_ROUTE.pattern)
+LOGO_ROUTE = re.compile(r"/company-logos/([a-z0-9-]+\.(svg|png|ico))")
+LOGO_TYPES = {"svg": "image/svg+xml", "png": "image/png", "ico": "image/x-icon"}
+COMPANIES = json.loads((ROOT / "companies.json").read_text(encoding="utf-8"))
 MAX_REQUEST = 8 * 1024 * 1024
 MAX_CASES = 20
 RUN_SLOT = threading.Lock()
@@ -130,12 +137,35 @@ def hidden_cases(db, problem_id):
     return json.loads(row["data"]) if row else []
 
 
-def library_entry(db, problem):
+def problem_detail(db, problem):
     problem_id = problem["id"]
     suite = hidden_cases(db, problem_id)
     completed = is_completed(db, problem_id)
-    return {**problem, "completed": completed, "hidden_count": len(suite),
+    return {**problem, "companies": company_tags(problem), "completed": completed, "hidden_count": len(suite),
             "hidden": suite if completed else []}
+
+
+def company_tags(problem):
+    tags = []
+    for company_id in problem.get("companies", []):
+        company = COMPANIES.get(company_id)
+        if company:
+            filename = company.get("logo")
+            tags.append({"id": company_id, "name": company["name"],
+                         "logo": f"/company-logos/{filename}" if filename else None})
+    return tags
+
+
+def catalog_entry(db, problem):
+    return {
+        "id": problem["id"],
+        "title": problem["title"],
+        "topics": problem.get("topics", []),
+        "companies": company_tags(problem),
+        "difficulty": problem.get("difficulty"),
+        "completed": is_completed(db, problem["id"]),
+    }
+
 
 def fetch_problem(db, problem_id):
     row = db.execute("SELECT data FROM problems WHERE id = ?", (problem_id,)).fetchone()
@@ -195,10 +225,17 @@ class Handler(BaseHTTPRequestHandler):
             return
         try:
             path = urlsplit(self.path).path
-            if self.command == "GET" and path in STATIC:
-                filename, content_type = STATIC[path]
-                self.respond(200, (ROOT / "web" / filename).read_bytes(), content_type)
-                return
+            if self.command == "GET":
+                asset = STATIC.get(path)
+                if PROBLEM_ROUTE.fullmatch(path):
+                    asset = ("problem.html", "text/html")
+                logo = LOGO_ROUTE.fullmatch(path)
+                if logo and (ROOT / "web" / path.lstrip("/")).is_file():
+                    asset = (path.lstrip("/"), LOGO_TYPES[logo[2]])
+                if asset:
+                    filename, content_type = asset
+                    self.respond(200, (ROOT / "web" / filename).read_bytes(), content_type)
+                    return
             if self.command == "POST":
                 if self.headers.get("X-Practice-Token") != self.server.token:
                     self.respond(403, {"error": "Reload the app to reconnect."})
@@ -225,8 +262,17 @@ class Handler(BaseHTTPRequestHandler):
             if path == "/api/library":
                 rows = db.execute("SELECT data FROM problems ORDER BY rowid").fetchall()
                 problems = [json.loads(row["data"]) for row in rows]
-                library = [library_entry(db, problem) for problem in problems if problem.get("function")]
-                self.respond(200, {"token": self.server.token, "problems": library})
+                library = [catalog_entry(db, problem) for problem in problems if problem.get("function")]
+                self.respond(200, {"problems": library})
+                return
+            detail = API_PROBLEM_ROUTE.fullmatch(path)
+            if detail:
+                try:
+                    problem = fetch_problem(db, detail[1])
+                except InvalidRequest as error:
+                    self.respond(404, {"error": str(error)})
+                    return
+                self.respond(200, {"token": self.server.token, "problem": problem_detail(db, problem)})
                 return
             match = re.fullmatch(r"/api/problems/([a-z0-9-]+)/attempts(?:/(\d+))?", path)
             if match:
@@ -311,11 +357,13 @@ class Handler(BaseHTTPRequestHandler):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--port", type=int, default=8000)
+    parser.add_argument("--bind", choices=("127.0.0.1", "0.0.0.0"), default="127.0.0.1",
+                        help="Listen on all container interfaces when running in Docker.")
     parser.add_argument("--data-dir", type=Path, default=ROOT / ".practice")
     args = parser.parse_args()
     data_path = args.data_dir.resolve() / "practice.sqlite3"
     initialize(data_path)
-    with ThreadingHTTPServer(("127.0.0.1", args.port), Handler) as server:
+    with ThreadingHTTPServer((args.bind, args.port), Handler) as server:
         port = server.server_address[1]
         server.allowed_hosts = {f"127.0.0.1:{port}", f"localhost:{port}"}
         server.token = secrets.token_urlsafe(24)

@@ -1,10 +1,12 @@
+import { companyTags } from "/companies.js";
+
 const $ = (id) => document.getElementById(id);
 const code = $("code");
 const content = $("test-content");
 const tabs = [...document.querySelectorAll("[data-tab]")];
 const state = {
-  problems: [], problem: null, token: null, tab: "samples",
-  sample: 0, hidden: 0, custom: 0, result: 0, cases: [], outputs: new Map(), busy: false,
+  problem: null, token: null, tab: "samples",
+  sample: 0, hidden: 0, custom: 0, result: 0, cases: [], output: null, busy: false,
 };
 const labels = { samples: "Public tests", custom: "Custom tests", all: "Public + custom", submission: "Submission", snapshot: "Saved code" };
 let noticeTimer;
@@ -152,9 +154,10 @@ function renderProblem() {
   const labelsNode = $("problem-labels");
   labelsNode.replaceChildren(element("span", problem.source ? "Reconstructed practice" : "Imported problem",
     problem.source ? "badge reconstructed" : "badge"));
+  if (problem.companies.length) labelsNode.append(companyTags(problem.companies, true));
   if (problem.difficulty) {
     const difficulty = element("span", problem.difficulty, "badge");
-    if (["easy", "medium"].includes(problem.difficulty.toLowerCase())) {
+    if (["easy", "medium", "hard"].includes(problem.difficulty.toLowerCase())) {
       difficulty.classList.add(problem.difficulty.toLowerCase());
     }
     labelsNode.append(difficulty);
@@ -176,44 +179,17 @@ function renderProblem() {
   document.querySelector(".statement").scrollTop = 0;
 }
 
-function renderLibrary() {
-  const count = state.problems.length;
-  $("problem-count").textContent = count + (count === 1 ? " problem" : " problems");
-  const list = $("library-items");
-  list.replaceChildren(...state.problems.map((problem) => {
-    const item = button("", () => {
-      openProblem(problem.id);
-      list.querySelector('[aria-current="true"]')?.focus();
-    }, "library-item");
-    item.setAttribute("aria-current", String(problem.id === state.problem?.id));
-    const icon = element("span", problem.completed ? "✓" : problem.source ? "◇" : "▤", "problem-icon");
-    icon.setAttribute("aria-hidden", "true");
-    const description = element("span");
-    const meta = [problem.difficulty, problem.completed ? "Completed" : problem.topics[0]].filter(Boolean).join(" · ");
-    description.append(element("strong", problem.title), element("small", meta));
-    item.append(icon, description);
-    return item;
-  }));
-}
-
-function openProblem(id) {
-  const problem = state.problems.find((candidate) => candidate.id === id);
-  if (!problem || state.problem === problem) return;
+function openProblem(problem) {
   state.problem = problem;
-  store("practice-lab:active", id);
-  state.sample = 0;
-  state.hidden = 0;
-  state.custom = 0;
-  state.result = 0;
+  document.title = problem.title + " · Practice Lab";
   state.cases = stored(storageKey("custom"), []);
-  const legacyDraft = stored("practice-lab:" + id + ":draft", null);
+  const legacyDraft = stored("practice-lab:" + problem.id + ":draft", null);
   code.value = stored(storageKey("draft"), legacyDraft ?? problem.starter);
   code.setSelectionRange(0, 0);
   code.scrollTo(0, 0);
   $("draft-status").textContent = legacyDraft !== null && code.value === legacyDraft ?
     "Older draft · update to a function" : "Draft autosaves";
   $("run-scope").value = problem.samples.length ? "samples" : "custom";
-  renderLibrary();
   renderProblem();
   refreshEditor();
   setTab(problem.samples.length ? "samples" : "custom");
@@ -443,11 +419,11 @@ function renderCustom() {
 }
 
 function renderResults() {
-  if (state.runningProblem === state.problem.id) {
+  if (state.running) {
     content.append(element("p", "Running tests…", "empty"));
     return;
   }
-  const run = state.outputs.get(state.problem.id);
+  const run = state.output;
   if (!run) {
     content.append(element("p", "Run tests to see feedback here, or open a saved run in Attempts.", "empty"));
     return;
@@ -532,7 +508,7 @@ async function loadAttempt(attemptId, restore) {
       code.focus();
       announce("Restored attempt #" + attempt.id + ".");
     } else {
-      state.outputs.set(problem.id, attempt);
+      state.output = attempt;
       state.result = 0;
       setTab("results");
       $("tab-results").focus();
@@ -562,7 +538,7 @@ async function saveAttempt(action) {
       body.scope = $("run-scope").value;
       if (body.scope !== "samples") body.cases = state.cases;
     }
-    state.runningProblem = problem.id;
+    state.running = true;
     state.result = 0;
     setTab("results");
   }
@@ -572,22 +548,21 @@ async function saveAttempt(action) {
   try {
     const result = await api(action, body);
     if (run) {
-      state.outputs.set(problem.id, result);
+      state.output = result;
       if (result.unlocked) {
         if (!problem.completed) announce("Problem complete. Hidden cases unlocked.");
         problem.completed = true;
         problem.hidden = result.unlocked;
-        renderLibrary();
       }
     } else {
       announce("Saved attempt #" + result.id + ".");
     }
   } catch (error) {
-    if (run) state.outputs.set(problem.id, { error: error.message });
+    if (run) state.output = { error: error.message };
     else announce(error.message);
   } finally {
     state.busy = false;
-    state.runningProblem = null;
+    state.running = false;
     trigger.lastChild.textContent = idleLabel;
     updateButtons();
     if (state.problem === problem && ["results", "history", "hidden"].includes(state.tab)) renderView();
@@ -613,16 +588,15 @@ document.addEventListener("keydown", (event) => {
 
 async function start() {
   updateButtons();
+  const list = new URLSearchParams(location.search).get("list");
+  if (list) $("back-to-problems").href = "/?" + new URLSearchParams(list);
   try {
-    const library = await api("library");
-    state.token = library.token;
-    state.problems = library.problems;
-    const active = stored("practice-lab:active", "");
-    openProblem(state.problems.find((problem) => problem.id === active)?.id || state.problems[0].id);
+    const detail = await api(location.pathname.slice(1));
+    state.token = detail.token;
+    openProblem(detail.problem);
   } catch (error) {
     $("problem-title").textContent = "Workspace unavailable";
-    $("problem-count").textContent = "Connection failed";
-    $("statement").append(element("p", error.message + " Start the local server and reload this page."));
+    $("statement").append(element("p", error.message));
   }
 }
 

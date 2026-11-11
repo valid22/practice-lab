@@ -1,0 +1,13 @@
+name: practice-lab
+services:
+  practice:
+    build: .
+    init: true
+    command: ["--port", "${PRACTICE_PORT:-8000}"]
+    ports:
+      - "127.0.0.1:${PRACTICE_PORT:-8000}:${PRACTICE_PORT:-8000}"
+    volumes:
+      - practice-data:/data
+
+volumes:
+  practice-data:
