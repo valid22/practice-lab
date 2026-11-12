@@ -1,0 +1,11 @@
+{
+	auto_https off
+	admin off
+}
+
+https://practice.lab {
+	tls /certs/practice.lab.crt /certs/practice.lab.key
+	reverse_proxy practice:{$PRACTICE_PORT:8000} {
+		header_up Host 127.0.0.1:{$PRACTICE_PORT:8000}
+	}
+}

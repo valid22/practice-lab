@@ -8,6 +8,18 @@ services:
       - "127.0.0.1:${PRACTICE_PORT:-8000}:${PRACTICE_PORT:-8000}"
     volumes:
       - practice-data:/data
+  https:
+    image: caddy:2-alpine
+    profiles: ["https"]
+    depends_on:
+      - practice
+    environment:
+      PRACTICE_PORT: "${PRACTICE_PORT:-8000}"
+    ports:
+      - "127.0.0.1:443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./.practice-tls:/certs:ro
 
 volumes:
   practice-data:

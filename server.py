@@ -6,22 +6,28 @@ import re
 import secrets
 import sqlite3
 import threading
+from collections import Counter
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlsplit
 
-from case_factory import make_hidden_suite
-from runner import run_cases
+from case_factory import SUITE_VERSIONS, make_hidden_suite
+from complexity import BENCHMARKS, analyze_complexity
+from runner import CASE_TIMEOUT, MEMORY_LIMIT_MIB, run_cases
 
 ROOT = Path(__file__).resolve().parent
 STATIC = {
     "/": ("index.html", "text/html"),
     "/style.css": ("style.css", "text/css"),
+    "/practice-icon.png": ("practice-icon.png", "image/png"),
+    "/appearance.js": ("appearance.js", "text/javascript"),
     "/app.js": ("app.js", "text/javascript"),
     "/catalog.js": ("catalog.js", "text/javascript"),
     "/companies.js": ("companies.js", "text/javascript"),
+    "/layout.js": ("layout.js", "text/javascript"),
+    "/editor.bundle.js": ("editor.bundle.js", "text/javascript"),
 }
 PROBLEM_ROUTE = re.compile(r"/problems/([a-z0-9-]+)/?")
 API_PROBLEM_ROUTE = re.compile(r"/api" + PROBLEM_ROUTE.pattern)
@@ -115,6 +121,11 @@ def initialize(path):
                 problem_id TEXT PRIMARY KEY, completed_at TEXT NOT NULL
             );
         """)
+        db.execute("BEGIN IMMEDIATE")
+        for table in ("hidden_suites", "completions"):
+            columns = {column["name"] for column in db.execute(f"PRAGMA table_info({table})")}
+            if "suite_version" not in columns:
+                db.execute(f"ALTER TABLE {table} ADD COLUMN suite_version INTEGER NOT NULL DEFAULT 1")
         for seed in seeds:
             problem_id = seed["id"]
             seed["samples"] = catalog_cases(seed["samples"])
@@ -122,26 +133,40 @@ def initialize(path):
                 "INSERT INTO problems VALUES (?, ?) ON CONFLICT(id) DO UPDATE SET data = excluded.data",
                 (problem_id, json.dumps(seed)),
             )
-            exists = db.execute("SELECT 1 FROM hidden_suites WHERE problem_id = ?", (problem_id,)).fetchone()
-            if not exists:
+            version = SUITE_VERSIONS.get(problem_id, 1)
+            saved = db.execute(
+                "SELECT suite_version FROM hidden_suites WHERE problem_id = ?", (problem_id,)
+            ).fetchone()
+            if not saved or saved["suite_version"] < version:
                 suite = make_hidden_suite(problem_id)
-                db.execute("INSERT INTO hidden_suites VALUES (?, ?)", (problem_id, json.dumps(catalog_cases(suite))))
+                db.execute("""
+                    INSERT INTO hidden_suites (problem_id, data, suite_version) VALUES (?, ?, ?)
+                    ON CONFLICT(problem_id) DO UPDATE
+                    SET data = excluded.data, suite_version = excluded.suite_version
+                """, (problem_id, json.dumps(catalog_cases(suite)), version))
 
 
 def is_completed(db, problem_id):
-    return db.execute("SELECT 1 FROM completions WHERE problem_id = ?", (problem_id,)).fetchone() is not None
+    return db.execute("""
+        SELECT 1 FROM completions JOIN hidden_suites USING (problem_id, suite_version)
+        WHERE problem_id = ?
+    """, (problem_id,)).fetchone() is not None
 
 
-def hidden_cases(db, problem_id):
-    row = db.execute("SELECT data FROM hidden_suites WHERE problem_id = ?", (problem_id,)).fetchone()
-    return json.loads(row["data"]) if row else []
+def hidden_suite(db, problem_id):
+    row = db.execute(
+        "SELECT suite_version, data FROM hidden_suites WHERE problem_id = ?", (problem_id,)
+    ).fetchone()
+    return (row["suite_version"], json.loads(row["data"])) if row else (0, [])
 
 
 def problem_detail(db, problem):
     problem_id = problem["id"]
-    suite = hidden_cases(db, problem_id)
+    _, suite = hidden_suite(db, problem_id)
     completed = is_completed(db, problem_id)
     return {**problem, "companies": company_tags(problem), "completed": completed, "hidden_count": len(suite),
+            "judge": {"seconds": CASE_TIMEOUT, "memory_mib": MEMORY_LIMIT_MIB},
+            "benchmark": BENCHMARKS[problem_id][0] if problem_id in BENCHMARKS else None,
             "hidden": suite if completed else []}
 
 
@@ -200,7 +225,7 @@ def attempt_summary(row):
 class Handler(BaseHTTPRequestHandler):
     server_version = "PracticeLab"
 
-    def respond(self, status, payload, content_type="application/json"):
+    def respond(self, status, payload, content_type="application/json", *, style_nonce=None):
         if isinstance(payload, (dict, list)):
             payload = json.dumps(payload).encode("utf-8")
         self.send_response(status)
@@ -209,7 +234,10 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Cache-Control", "no-store")
         self.send_header("X-Content-Type-Options", "nosniff")
         self.send_header("Referrer-Policy", "no-referrer")
-        self.send_header("Content-Security-Policy", "default-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'")
+        policy = "default-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
+        if style_nonce:
+            policy += f"; style-src 'self' 'nonce-{style_nonce}'"
+        self.send_header("Content-Security-Policy", policy)
         self.end_headers()
         self.wfile.write(payload)
 
@@ -234,7 +262,13 @@ class Handler(BaseHTTPRequestHandler):
                     asset = (path.lstrip("/"), LOGO_TYPES[logo[2]])
                 if asset:
                     filename, content_type = asset
-                    self.respond(200, (ROOT / "web" / filename).read_bytes(), content_type)
+                    payload = (ROOT / "web" / filename).read_bytes()
+                    if filename == "problem.html":
+                        nonce = secrets.token_urlsafe(18)
+                        payload = payload.replace(b"__EDITOR_STYLE_NONCE__", nonce.encode("ascii"), 1)
+                        self.respond(200, payload, content_type, style_nonce=nonce)
+                    else:
+                        self.respond(200, payload, content_type)
                     return
             if self.command == "POST":
                 if self.headers.get("X-Practice-Token") != self.server.token:
@@ -291,7 +325,7 @@ class Handler(BaseHTTPRequestHandler):
         self.respond(404, {"error": "Page or attempt not found."})
 
     def handle_post(self, path, body):
-        if path not in ("/api/run", "/api/submit", "/api/save"):
+        if path not in ("/api/run", "/api/submit", "/api/save", "/api/complexity"):
             self.respond(404, {"error": "Action not found."})
             return
         problem_id = string(body.get("problem_id"), "Problem ID", 100, required=True)
@@ -299,9 +333,25 @@ class Handler(BaseHTTPRequestHandler):
         submit = path == "/api/submit"
         with database(self.server.data_path) as db:
             problem = fetch_problem(db, problem_id)
-            suite = hidden_cases(db, problem_id) if submit else []
+            version, suite = hidden_suite(db, problem_id) if submit else (0, [])
+        if path == "/api/complexity":
+            mode = body.get("mode")
+            if mode not in ("source", "benchmark"):
+                raise InvalidRequest("Choose source analysis or benchmarking.")
+            if mode == "benchmark" and problem_id not in BENCHMARKS:
+                raise InvalidRequest("Benchmarks are unavailable for this problem.")
+            if not RUN_SLOT.acquire(blocking=False):
+                self.respond(409, {"error": "A run is already in progress."})
+                return
+            try:
+                report = analyze_complexity(problem, code, mode)
+            finally:
+                RUN_SLOT.release()
+            self.respond(200, report)
+            return
         results = []
         hidden_summary = None
+        first_wrong_answer = None
         scope = "snapshot"
         if path != "/api/save":
             scope = "submission" if submit else body.get("scope")
@@ -311,23 +361,30 @@ class Handler(BaseHTTPRequestHandler):
                 raise InvalidRequest("Use Submit to check hidden cases.")
             if submit and not suite:
                 raise InvalidRequest("This problem has no hidden tests configured.")
-            cases = problem["samples"] if scope in ("samples", "all", "submission") else []
+            cases = ([{**case, "group": "public"} for case in problem["samples"]]
+                     if scope in ("samples", "all", "submission") else [])
             if scope in ("custom", "all"):
-                cases = cases + clean_custom_cases(body.get("cases", []))
+                cases.extend({**case, "group": "custom"} for case in clean_custom_cases(body.get("cases", [])))
             if not cases and not suite:
                 raise InvalidRequest("Add a test case before running.")
             if not RUN_SLOT.acquire(blocking=False):
                 self.respond(409, {"error": "A test run is already in progress."})
                 return
             try:
-                results = run_cases(code, problem["function"], cases + suite)
+                private = [{**case, "group": "private"} for case in suite]
+                results = run_cases(code, problem["function"], cases + private)
             finally:
                 RUN_SLOT.release()
             if submit:
+                first_wrong_answer = next(
+                    (result for result in results if result["status"] == "Wrong answer"), None
+                )
                 hidden_results = results[len(cases):]
+                verdicts = Counter(result["status"] for result in hidden_results)
                 hidden_summary = {
-                    "passed": sum(result["status"] == "Passed" for result in hidden_results),
+                    "passed": verdicts.pop("Passed", 0),
                     "total": len(suite),
+                    "verdicts": dict(verdicts),
                 }
                 passed = all(result["status"] == "Passed" for result in results)
                 public_results = results[:len(cases)]
@@ -336,7 +393,12 @@ class Handler(BaseHTTPRequestHandler):
         with database(self.server.data_path) as db:
             if submit:
                 if passed:
-                    db.execute("INSERT OR IGNORE INTO completions VALUES (?, ?)", (problem_id, created))
+                    db.execute("""
+                        INSERT INTO completions (problem_id, completed_at, suite_version) VALUES (?, ?, ?)
+                        ON CONFLICT(problem_id) DO UPDATE
+                        SET completed_at = excluded.completed_at, suite_version = excluded.suite_version
+                        WHERE completions.suite_version < excluded.suite_version
+                    """, (problem_id, created, version))
                 completed = is_completed(db, problem_id)
                 results = public_results
                 if completed:
@@ -344,12 +406,14 @@ class Handler(BaseHTTPRequestHandler):
             else:
                 completed = False
             data = {"results": results, "hidden_summary": hidden_summary, "completed": completed}
+            if first_wrong_answer is not None:
+                data["first_wrong_answer"] = first_wrong_answer
             cursor = db.execute(
                 "INSERT INTO attempts (problem_id, created, code, scope, results) VALUES (?, ?, ?, ?, ?)",
                 (problem_id, created, code, scope, json.dumps(data)),
             )
             attempt_id = cursor.lastrowid
-        response = {"id": attempt_id, "created": created, **data}
+        response = {"id": attempt_id, "created": created, "scope": scope, **data}
         if submit and completed:
             response["unlocked"] = suite
         self.respond(201, response)

@@ -4,7 +4,9 @@ RUN useradd --uid 10001 --user-group --no-create-home practice \
     && install -d -o practice -g practice /data
 
 WORKDIR /app
-COPY server.py runner.py case_factory.py problems.json companies.json ./
+COPY requirements-complexity.txt ./
+RUN python -m pip install --no-cache-dir --require-hashes --only-binary=:all: -r requirements-complexity.txt
+COPY server.py runner.py complexity.py case_factory.py problems.json companies.json ./
 COPY web/ ./web/
 
 USER practice

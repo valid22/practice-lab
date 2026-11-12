@@ -4,65 +4,81 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Practice Lab · Coding workspace</title>
+  <link rel="icon" href="/practice-icon.png" type="image/png" sizes="96x96">
+  <meta name="editor-style-nonce" content="__EDITOR_STYLE_NONCE__">
+  <script src="/appearance.js"></script>
   <link rel="stylesheet" href="/style.css">
   <script type="module" src="/app.js"></script>
 </head>
 <body>
   <header class="topbar">
     <a class="brand" href="/" aria-label="Practice Lab home">
-      <span class="brand-mark" aria-hidden="true">⌘</span>
+      <img class="brand-mark" src="/practice-icon.png" alt="" width="32" height="32">
       <span>Practice Lab</span>
     </a>
     <span class="top-divider"></span>
     <a class="back-link" id="back-to-problems" href="/">← Problems</a>
+    <div class="appearance" id="appearance"></div>
     <span class="local"><i></i> Local workspace</span>
   </header>
 
-  <main class="workspace">
-    <section class="panel statement-panel" aria-labelledby="problem-title">
-      <div class="panel-bar"><span class="bar-icon" aria-hidden="true">▤</span> Problem statement</div>
+  <main class="workspace" id="workspace">
+    <section class="panel statement-panel" id="statement-panel" aria-labelledby="problem-title">
+      <div class="panel-bar">
+        <span class="bar-icon" aria-hidden="true">▤</span> Problem statement
+        <button class="text-button collapse-panel push" id="hide-statement" type="button" aria-controls="statement-panel" aria-label="Collapse problem statement" title="Collapse problem statement">−</button>
+      </div>
       <article class="statement">
         <div class="problem-labels" id="problem-labels"></div>
         <h1 id="problem-title">Loading workspace…</h1>
         <div class="topics" id="topics"></div>
+        <p class="muted judge-limits" id="judge-limits" hidden></p>
         <div id="statement"></div>
         <section id="examples" class="examples" aria-label="Examples"></section>
         <aside id="source-note" class="source-note" hidden>
           <span aria-hidden="true">↗</span>
-          <div><strong>Reconstructed practice</strong><p>Adapted from a public candidate report. Independently written for practice.</p>
-            <a id="source" target="_blank" rel="noopener noreferrer">View the public report</a>
+          <div><strong id="source-heading"></strong>
+            <p id="source-description"></p>
+            <ul id="source-links"></ul>
           </div>
         </aside>
       </article>
     </section>
+    <button class="reopen-panel reopen-statement" id="show-statement" type="button" aria-controls="statement-panel" hidden>Show problem</button>
+    <div class="splitter splitter-vertical" id="statement-splitter" role="separator" tabindex="0"
+      aria-label="Problem statement size" aria-orientation="vertical" aria-controls="statement-panel"
+      title="Drag to resize the statement. Press Enter to collapse or reopen."></div>
 
-    <section class="workbench" aria-label="Coding workbench">
+    <section class="workbench" id="workbench" aria-label="Coding workbench">
       <section class="panel editor-panel" aria-label="Python editor">
         <div class="panel-bar editor-bar">
           <span class="bar-icon" aria-hidden="true">‹/›</span><span>Python editor</span>
           <button id="reset" class="text-button push" type="button">Reset code</button>
         </div>
         <div class="editor-file"><span class="file-icon" aria-hidden="true">Py</span> solution.py</div>
-        <div class="editor-field">
-          <pre class="line-gutter" id="line-gutter" aria-hidden="true"></pre>
-          <div class="code-field">
-            <pre class="highlight" id="highlight" aria-hidden="true"></pre>
-            <textarea id="code" aria-label="Python code" spellcheck="false" autocapitalize="off" autocomplete="off" wrap="off"></textarea>
-          </div>
-        </div>
+        <div class="editor-field" id="code"></div>
+        <span class="sr-only" id="editor-keys">Press Escape, then Tab to leave the editor.</span>
         <div class="editor-footer">
           <span id="draft-status" role="status">Draft autosaves</span>
           <span id="position">Ln 1, Col 1</span>
         </div>
       </section>
 
-      <section class="panel tests-panel" aria-label="Tests and attempts">
-        <div class="panel-bar tabbar" role="tablist" aria-label="Workbench views">
-          <button id="tab-samples" role="tab" aria-controls="test-content" data-tab="samples">Public <span id="sample-count"></span></button>
-          <button id="tab-hidden" role="tab" aria-controls="test-content" data-tab="hidden">Hidden</button>
-          <button id="tab-custom" role="tab" aria-controls="test-content" data-tab="custom">Custom</button>
-          <button id="tab-results" role="tab" aria-controls="test-content" data-tab="results">Results</button>
-          <button id="tab-history" role="tab" aria-controls="test-content" data-tab="history">Attempts</button>
+      <div class="splitter splitter-horizontal" id="tests-splitter" role="separator" tabindex="0"
+        aria-label="Test panel size" aria-orientation="horizontal" aria-controls="tests-panel"
+        title="Drag to resize the tests. Press Enter to collapse or reopen."></div>
+      <button class="reopen-panel reopen-tests" id="show-tests" type="button" aria-controls="tests-panel" hidden>Show tests</button>
+      <section class="panel tests-panel" id="tests-panel" aria-label="Tests and attempts">
+        <div class="panel-bar tests-bar">
+          <div class="tabbar" role="tablist" aria-label="Workbench views">
+            <button id="tab-samples" role="tab" aria-controls="test-content" data-tab="samples">Public <span id="sample-count"></span></button>
+            <button id="tab-hidden" role="tab" aria-controls="test-content" data-tab="hidden">Private</button>
+            <button id="tab-custom" role="tab" aria-controls="test-content" data-tab="custom">Custom</button>
+            <button id="tab-results" role="tab" aria-controls="test-content" data-tab="results">Results</button>
+            <button id="tab-complexity" role="tab" aria-controls="test-content" data-tab="complexity">Complexity</button>
+            <button id="tab-history" role="tab" aria-controls="test-content" data-tab="history">Attempts</button>
+          </div>
+          <button class="text-button collapse-panel" id="hide-tests" type="button" aria-controls="tests-panel" aria-label="Collapse test panel" title="Collapse test panel">−</button>
         </div>
         <div id="test-content" class="test-content" role="tabpanel" tabindex="0"></div>
         <footer class="actions">

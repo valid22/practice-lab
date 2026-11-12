@@ -1,4 +1,7 @@
 .git
 .practice
+.practice-tls
+.env
+node_modules
 __pycache__
 .DS_Store

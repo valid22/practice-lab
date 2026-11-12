@@ -4,17 +4,20 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Problems · Practice Lab</title>
+  <link rel="icon" href="/practice-icon.png" type="image/png" sizes="96x96">
+  <script src="/appearance.js"></script>
   <link rel="stylesheet" href="/style.css">
   <script type="module" src="/catalog.js"></script>
 </head>
 <body>
   <header class="topbar">
     <a class="brand" href="/" aria-label="Practice Lab home">
-      <span class="brand-mark" aria-hidden="true">⌘</span>
+      <img class="brand-mark" src="/practice-icon.png" alt="" width="32" height="32">
       <span>Practice Lab</span>
     </a>
     <span class="top-divider"></span>
     <span class="top-context">Interview practice</span>
+    <div class="appearance" id="appearance"></div>
     <span class="local"><i></i> Local workspace</span>
   </header>
   <main class="catalog" aria-labelledby="catalog-title">
@@ -43,7 +46,7 @@
       </div>
       <div class="catalog-table-wrap" id="catalog-results" hidden>
         <table class="catalog-table">
-          <thead><tr><th scope="col">Problem</th><th scope="col">Company</th><th scope="col">Difficulty</th><th scope="col">Topics</th><th scope="col">Status</th></tr></thead>
+          <thead><tr><th scope="col">Problem</th><th scope="col">Companies</th><th scope="col">Difficulty</th><th scope="col">Topics</th><th scope="col">Status</th></tr></thead>
           <tbody id="catalog-rows"></tbody>
         </table>
       </div>

@@ -1,15 +1,23 @@
 import { companyTags } from "/companies.js";
+import { revealTests } from "/layout.js";
+import { createPythonEditor } from "/editor.bundle.js";
 
 const $ = (id) => document.getElementById(id);
-const code = $("code");
 const content = $("test-content");
 const tabs = [...document.querySelectorAll("[data-tab]")];
 const state = {
   problem: null, token: null, tab: "samples",
   sample: 0, hidden: 0, custom: 0, result: 0, cases: [], output: null, busy: false,
+  complexity: {},
 };
 const labels = { samples: "Public tests", custom: "Custom tests", all: "Public + custom", submission: "Submission", snapshot: "Saved code" };
 let noticeTimer;
+const editor = createPythonEditor($("code"), {
+  nonce: document.querySelector('meta[name="editor-style-nonce"]').content,
+  onChange: updateDraft,
+  onPosition: (line, column) => { $("position").textContent = "Ln " + line + ", Col " + column; },
+  onRun: () => saveAttempt("run"),
+});
 
 function element(tag, text, className) {
   const node = document.createElement(tag);
@@ -135,9 +143,32 @@ function renderMarkdown(text, target) {
   }
 }
 
-function caseBox(label, value, full = false) {
+function caseBox(label, value, { full = false, display = "clipped" } = {}) {
   const box = element("div", undefined, full ? "case-box full" : "case-box");
-  box.append(element("h3", label), element("pre", value === "" ? "(empty)" : value));
+  const heading = element("div", undefined, "case-box-head");
+  heading.append(element("h3", label));
+  if (value) {
+    const copy = button("Copy", async () => {
+      try {
+        await navigator.clipboard.writeText(value);
+        announce(label + " copied.");
+      } catch {
+        announce("Clipboard unavailable. Check your browser permissions.");
+      }
+    }, "text-button copy-value");
+    copy.setAttribute("aria-label", "Copy " + label.toLowerCase());
+    heading.append(copy);
+  }
+  const preview = display === "clipped" && value.length > 320 ? value.slice(0, 320).trimEnd() + "…" : value;
+  const body = element("div", undefined, "case-value");
+  const text = element("pre", preview || "(empty)", "case-preview " + display);
+  if (display === "scrollable") {
+    text.tabIndex = 0;
+    text.setAttribute("role", "region");
+    text.setAttribute("aria-label", label);
+  }
+  body.append(text);
+  box.append(heading, body);
   return box;
 }
 
@@ -152,8 +183,11 @@ function renderProblem() {
   const problem = state.problem;
   $("problem-title").textContent = problem.title;
   const labelsNode = $("problem-labels");
-  labelsNode.replaceChildren(element("span", problem.source ? "Reconstructed practice" : "Imported problem",
-    problem.source ? "badge reconstructed" : "badge"));
+  const reports = problem.reports || [];
+  const hasSource = Boolean(problem.source || reports.length);
+  const publicProblem = problem.source_kind === "public-problem";
+  const sourceLabel = !hasSource ? "Practice drill" : publicProblem ? "Public problem adaptation" : "Reconstructed practice";
+  labelsNode.replaceChildren(element("span", sourceLabel, hasSource ? "badge reconstructed" : "badge"));
   if (problem.companies.length) labelsNode.append(companyTags(problem.companies, true));
   if (problem.difficulty) {
     const difficulty = element("span", problem.difficulty, "badge");
@@ -163,6 +197,9 @@ function renderProblem() {
     labelsNode.append(difficulty);
   }
   $("topics").replaceChildren(...problem.topics.map((topic) => element("span", topic, "topic")));
+  const limits = $("judge-limits");
+  limits.textContent = "Time " + problem.judge.seconds + " s · Memory " + problem.judge.memory_mib + " MiB per case";
+  limits.hidden = false;
   renderMarkdown(problem.statement, $("statement"));
   const examples = $("examples");
   examples.replaceChildren();
@@ -173,8 +210,32 @@ function renderProblem() {
     details.append(element("summary", test.name), caseGrid(test));
     examples.append(details);
   });
-  $("source-note").hidden = !problem.source;
-  if (problem.source) $("source").href = problem.source;
+  $("source-note").hidden = !hasSource;
+  $("source-links").replaceChildren();
+  if (hasSource) {
+    $("source-heading").textContent = sourceLabel;
+    $("source-description").textContent = publicProblem
+      ? "Adapted from a published coding problem."
+      : problem.source_kind === "interview-platform"
+        ? "Adapted from a question attributed to OpenAI by Hello Interview."
+        : "Practice versions based on publicly reported questions.";
+    const sources = reports.length ? reports : [{
+      url: problem.source,
+      label: publicProblem ? "View the original problem" : "View the interview source",
+    }];
+    for (const source of sources) {
+      const company = problem.companies.find(({ id }) => id === source.company);
+      const label = source.label || [company?.name, source.round].filter(Boolean).join(" · ");
+      const link = element("a", label);
+      link.href = source.url;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      const item = element("li");
+      item.append(link);
+      if (source.detail) item.append(" — " + source.detail);
+      $("source-links").append(item);
+    }
+  }
   $("sample-count").textContent = problem.samples.length ? String(problem.samples.length) : "";
   document.querySelector(".statement").scrollTop = 0;
 }
@@ -184,84 +245,22 @@ function openProblem(problem) {
   document.title = problem.title + " · Practice Lab";
   state.cases = stored(storageKey("custom"), []);
   const legacyDraft = stored("practice-lab:" + problem.id + ":draft", null);
-  code.value = stored(storageKey("draft"), legacyDraft ?? problem.starter);
-  code.setSelectionRange(0, 0);
-  code.scrollTo(0, 0);
-  $("draft-status").textContent = legacyDraft !== null && code.value === legacyDraft ?
+  editor.setValue(stored(storageKey("draft"), legacyDraft ?? problem.starter), true);
+  $("draft-status").textContent = legacyDraft !== null && editor.getValue() === legacyDraft ?
     "Older draft · update to a function" : "Draft autosaves";
   $("run-scope").value = problem.samples.length ? "samples" : "custom";
   renderProblem();
-  refreshEditor();
   setTab(problem.samples.length ? "samples" : "custom");
 }
 
-const tokenPattern = /#[^\n]*|"(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)*'|\b(?:and|as|assert|async|await|break|class|continue|def|del|elif|else|except|False|finally|for|from|global|if|import|in|is|lambda|None|nonlocal|not|or|pass|raise|return|True|try|while|with|yield)\b|\b\d+(?:\.\d+)?\b/g;
-
-function refreshEditor() {
-  const text = code.value;
-  const fragment = document.createDocumentFragment();
-  let cursor = 0;
-  for (const match of text.matchAll(tokenPattern)) {
-    fragment.append(text.slice(cursor, match.index));
-    const first = match[0][0];
-    const kind = first === "#" ? "comment" : ['"', "'"].includes(first) ? "string" :
-      /\d/.test(first) ? "number" : "keyword";
-    fragment.append(element("span", match[0], "syn-" + kind));
-    cursor = match.index + match[0].length;
-  }
-  fragment.append(text.slice(cursor) + "\n");
-  $("highlight").replaceChildren(fragment);
-  const lineCount = text.split("\n").length;
-  $("line-gutter").textContent = Array.from({ length: lineCount }, (_, index) => index + 1).join("\n") + "\n";
-  syncScroll();
-  showPosition();
-}
-
-function syncScroll() {
-  $("highlight").scrollTop = code.scrollTop;
-  $("highlight").scrollLeft = code.scrollLeft;
-  $("line-gutter").scrollTop = code.scrollTop;
-}
-
-function showPosition() {
-  const lines = code.value.slice(0, code.selectionEnd).split("\n");
-  $("position").textContent = "Ln " + lines.length + ", Col " + (lines.at(-1).length + 1);
-}
-
-function updateDraft() {
+function updateDraft(value) {
   if (!state.problem) return;
-  $("draft-status").textContent = store(storageKey("draft"), code.value) ? "Draft saved" : "Draft storage unavailable";
-  refreshEditor();
+  $("draft-status").textContent = store(storageKey("draft"), value) ? "Draft saved" : "Draft storage unavailable";
+  if (state.complexityCode !== value && Object.keys(state.complexity).length) {
+    state.complexity = {};
+    if (state.tab === "complexity") renderView();
+  }
 }
-
-code.addEventListener("input", updateDraft);
-code.addEventListener("scroll", syncScroll);
-for (const name of ["click", "keyup", "select", "focus"]) code.addEventListener(name, showPosition);
-let allowTab = false;
-code.addEventListener("keydown", (event) => {
-  if (event.key === "Escape") {
-    allowTab = true;
-    return;
-  }
-  if (event.key === "Tab" && (allowTab || event.shiftKey)) {
-    allowTab = false;
-    return;
-  }
-  allowTab = false;
-  if (event.metaKey || event.ctrlKey || event.altKey || event.isComposing) return;
-  if (event.key === "Tab" || event.key === "Enter") {
-    const before = code.value.slice(0, code.selectionStart);
-    const line = before.slice(before.lastIndexOf("\n") + 1);
-    const indent = line.match(/^\s*/)[0];
-    const insertion = event.key === "Tab" ? "    " : "\n" + indent + (line.trimEnd().endsWith(":") ? "    " : "");
-    event.preventDefault();
-    // insertText preserves the native undo stack where supported.
-    if (!document.execCommand("insertText", false, insertion)) {
-      code.setRangeText(insertion, code.selectionStart, code.selectionEnd, "end");
-      updateDraft();
-    }
-  }
-});
 
 function setTab(tab) {
   state.tab = tab;
@@ -304,21 +303,40 @@ function updateButtons() {
   $("save").disabled = state.busy || !state.problem;
   $("submit").disabled = state.busy || !state.problem?.hidden_count;
   $("reset").disabled = !state.problem;
-  code.disabled = !state.problem;
+  for (const control of content.querySelectorAll("[data-complexity-action]")) {
+    control.disabled = state.busy;
+  }
+  editor.setDisabled(!state.problem);
 }
 
-function caseTabs(cases, current, onSelect) {
+function caseTabs(cases, current, onSelect, group) {
   const bar = element("div", undefined, "case-tabs");
   cases.forEach((test, index) => {
     const tab = button("Case " + (index + 1), () => {
       onSelect(index);
-      content.querySelectorAll(".case-tabs button")[index]?.focus();
+      content.querySelector('.case-tabs button[aria-pressed="true"]')?.focus();
     }, "");
     tab.setAttribute("aria-pressed", String(current === index));
     if (test.name) tab.title = test.name;
+    if (test.status) {
+      const kind = verdictKind(test.status);
+      const icon = element("span", { passed: "✓", failed: "×", warning: "!", neutral: "–" }[kind], "case-verdict");
+      icon.setAttribute("aria-hidden", "true");
+      tab.classList.add("case-" + kind);
+      const label = group ? group + " case " : "Case ";
+      tab.setAttribute("aria-label", label + (index + 1) + ": " + test.status);
+      tab.title = test.name ? test.name + " · " + test.status : test.status;
+      tab.prepend(icon);
+    }
     bar.append(tab);
   });
   return bar;
+}
+
+function verdictKind(status) {
+  if (status === "Passed") return "passed";
+  if (status === "Ran" || status === "Not run") return "neutral";
+  return status.endsWith("limit") ? "warning" : "failed";
 }
 
 function renderSamples() {
@@ -337,11 +355,11 @@ function renderSamples() {
 function renderHidden() {
   const problem = state.problem;
   if (!problem.hidden_count) {
-    content.append(element("p", "This problem has no hidden cases.", "empty"));
+    content.append(element("p", "This problem has no private cases.", "empty"));
     return;
   }
   if (!problem.completed) {
-    content.append(element("p", problem.hidden_count + " hidden cases. Pass a submission to unlock their inputs and expected returns.", "empty"));
+    content.append(element("p", problem.hidden_count + " private cases. Pass a submission to unlock their inputs and expected returns.", "empty"));
     return;
   }
   const test = problem.hidden[state.hidden];
@@ -418,6 +436,66 @@ function renderCustom() {
   content.append(name, grid, checkLabel, remove);
 }
 
+function resultGroups(run, showCases) {
+  const groups = { public: [], custom: [], private: [] };
+  run.results.forEach((test, index) => {
+    // Older combined runs stored public samples first and did not tag custom cases.
+    const legacy = test.hidden ? "private" :
+      run.scope === "custom" || (run.scope === "all" && index >= state.problem.samples.length) ? "custom" : "public";
+    groups[test.group ?? legacy].push({ test, index });
+  });
+
+  const sections = element("div", undefined, "result-groups");
+  for (const [group, cases] of Object.entries(groups)) {
+    const privateSummary = group === "private" ? run.hidden_summary : null;
+    if (!cases.length && !privateSummary) continue;
+    const name = group[0].toUpperCase() + group.slice(1);
+    const section = element("section", undefined, "result-group");
+    section.setAttribute("aria-label", name + " results");
+    const header = element("div", undefined, "result-group-head");
+    const checked = privateSummary?.total ?? cases.filter(({ test }) => test.expected !== null).length;
+    const passed = privateSummary?.passed ?? cases.filter(({ test }) => test.status === "Passed").length;
+    const unchecked = privateSummary ? 0 : cases.length - checked;
+    const summary = [checked ? passed + "/" + checked + " passed" : "",
+      unchecked ? unchecked + " unchecked" : ""].filter(Boolean).join(" · ");
+    header.append(element("h3", name), element("span", summary, "muted"));
+    section.append(header);
+    if (cases.length && showCases) {
+      section.append(caseTabs(cases.map(({ test }) => test),
+        cases.findIndex(({ index }) => index === state.result), (index) => {
+          state.result = cases[index].index;
+          renderView();
+        }, name));
+    } else if (!cases.length) {
+      header.append(element("span", "Locked", "badge"));
+    }
+    const verdicts = Object.entries(privateSummary?.verdicts ?? {});
+    if (!cases.length && verdicts.length) {
+      const details = verdicts.map(([status, count]) => count + " " + status.toLowerCase());
+      section.append(element("p", details.join(" · "), "muted private-verdicts"));
+    }
+    sections.append(section);
+  }
+  return sections;
+}
+
+function resultMetrics(test) {
+  const metrics = element("dl", undefined, "result-metrics");
+  const hasTime = test.status !== "Not run" && Number.isFinite(test.elapsed_ms);
+  const memory = Number.isFinite(test.peak_memory_bytes) && test.peak_memory_bytes > 0
+    ? (test.peak_memory_bytes / (1024 * 1024)).toFixed(1) + " MiB" : null;
+  for (const [label, value, description] of [
+    ["Time", hasTime ? test.elapsed_ms + " ms" : null, "Elapsed time including Python startup"],
+    ["Peak memory", memory, "Peak resident memory of the Python process"],
+  ]) {
+    const metric = element("div");
+    metric.title = value === null ? "Unavailable for this case" : description;
+    metric.append(element("dt", label), element("dd", value ?? "—"));
+    metrics.append(metric);
+  }
+  return metrics;
+}
+
 function renderResults() {
   if (state.running) {
     content.append(element("p", "Running tests…", "empty"));
@@ -432,38 +510,36 @@ function renderResults() {
     content.append(element("p", run.error, "form-error"));
     return;
   }
-  const results = run.results;
-  const selected = results[state.result] || results[0];
-  const publicResults = results.filter((result) => !result.hidden);
-  const checked = publicResults.filter((result) => result.expected !== null).length;
-  const passed = publicResults.filter((result) => result.status === "Passed").length;
-  const head = element("div", undefined, "result-head");
-  const summary = checked ? passed + "/" + checked + (run.hidden_summary ? " public checks passed" : " checks passed") :
-    publicResults.length + " runs";
-  head.append(element("h3", summary, "case-title"), element("small", "Attempt #" + run.id, "muted"));
-  if (run.hidden_summary) {
-    const { passed: hiddenPassed, total } = run.hidden_summary;
-    head.append(element("span", hiddenPassed + "/" + total + " hidden checks passed", "badge"));
-  }
-  content.append(head);
+  // Older submissions may only have a wrong answer in their visible results.
+  const wrong = run.scope === "submission"
+    ? run.first_wrong_answer ?? run.results.find((test) => test.status === "Wrong answer")
+    : null;
+  content.append(element("p", "Attempt #" + run.id, "result-attempt"), resultGroups(run, !wrong));
+  const selected = wrong ?? (run.results[state.result] || run.results[0]);
   if (!selected) return;
-  const statusRow = element("div", undefined, "result-head");
-  const kind = selected.status === "Passed" ? "passed" : selected.status === "Ran" ? "" :
-    selected.status.endsWith("limit") ? "warning" : "failed";
-  statusRow.append(element("strong", (selected.hidden ? "Hidden · " : "") + (selected.name || "Test case")),
-    element("span", selected.status + " · " + selected.elapsed_ms + " ms", "badge " + kind));
-  const grid = caseGrid(selected);
-  if ("returned" in selected) {
-    grid.append(caseBox("Your return", selected.returned, true));
-    if (selected.stdout) grid.append(caseBox("Printed output", selected.stdout, true));
-  } else {
-    grid.append(caseBox("Your output", selected.stdout, true));
+  const statusRow = element("div", undefined, "result-head selected-case");
+  const caseHeading = element("div", undefined, "selected-case-title");
+  const status = selected.status ?? "Wrong answer";
+  caseHeading.append(element("h3", selected.name || (wrong ? "First wrong answer" : "Test case"), "case-title"),
+    element("span", status, "badge " + verdictKind(status)));
+  if (wrong) {
+    const group = wrong.group === "private" || wrong.hidden ? "Private" : "Public";
+    caseHeading.append(element("span", group, "badge"));
   }
-  if (selected.stderr) grid.append(caseBox("Standard error", selected.stderr, true));
-  content.append(caseTabs(results, state.result, (index) => {
-    state.result = index;
-    renderView();
-  }), statusRow, grid);
+  statusRow.append(caseHeading, resultMetrics(selected));
+  // Older private failures saved the return value alone.
+  const grid = "input" in selected ? caseGrid(selected) : element("div", undefined, "case-grid");
+  if ("returned" in selected) {
+    grid.append(caseBox("Your return", selected.returned, { full: true, display: "scrollable" }));
+    if (selected.stdout) grid.append(caseBox("Printed output", selected.stdout, { full: true, display: "scrollable" }));
+  } else {
+    grid.append(caseBox("Your output", selected.stdout, { full: true, display: "scrollable" }));
+  }
+  if (selected.stderr) grid.append(caseBox("Standard error", selected.stderr, { full: true, display: "expanded" }));
+  content.append(statusRow, grid);
+  if (!("input" in selected)) {
+    content.append(element("p", "Submit again to see the full failing case.", "muted"));
+  }
 }
 
 let historyRequest = 0;
@@ -501,11 +577,9 @@ async function loadAttempt(attemptId, restore) {
     const attempt = await api("problems/" + problem.id + "/attempts/" + attemptId);
     if (state.problem !== problem || state.tab !== "history") return;
     if (restore) {
-      if (code.value !== attempt.code && !window.confirm("Replace the editor draft with this saved attempt?")) return;
-      code.value = attempt.code;
-      code.setSelectionRange(0, 0);
-      updateDraft();
-      code.focus();
+      if (editor.getValue() !== attempt.code && !window.confirm("Replace the editor draft with this saved attempt?")) return;
+      editor.setValue(attempt.code);
+      editor.focus();
       announce("Restored attempt #" + attempt.id + ".");
     } else {
       state.output = attempt;
@@ -518,11 +592,125 @@ async function loadAttempt(attemptId, restore) {
   }
 }
 
+function renderComplexity() {
+  const actions = element("div", undefined, "complexity-actions");
+  for (const [mode, label, runningLabel] of [
+    ["source", "Analyze code", "Analyzing…"], ["benchmark", "Benchmark", "Benchmarking…"],
+  ]) {
+    if (mode === "benchmark" && !state.problem.benchmark) continue;
+    const control = button(state.complexityRunning === mode ? runningLabel : label,
+      () => runComplexity(mode), mode === "source" ? "button primary" : "button");
+    control.dataset.complexityAction = mode;
+    control.disabled = state.busy;
+    actions.append(control);
+  }
+  content.append(actions);
+  if (!state.problem.benchmark) {
+    content.append(element("p", "Benchmark inputs are unavailable for this problem.", "muted"));
+  }
+
+  const source = state.complexity.source;
+  const benchmark = state.complexity.benchmark;
+  if (!source && !benchmark) {
+    content.append(element("p", "Analyze the draft for a time estimate or benchmark growth on generated inputs.", "muted"));
+  }
+  if (source) {
+    const section = element("section", undefined, "complexity-report");
+    section.append(element("h3", "Time estimate from code"),
+      element("p", source.label ?? source.message, source.label ? "complexity-estimate" : "muted"));
+    if (source.reasons?.length) {
+      const reasons = element("ul", undefined, "muted");
+      for (const reason of source.reasons) reasons.append(element("li", reason));
+      section.append(reasons);
+    }
+    if (source.label) section.append(element("p",
+      "A source-based estimate can miss costs from helper calls and input-dependent behavior.", "muted"));
+    content.append(section);
+  }
+  if (benchmark) renderBenchmark(benchmark);
+}
+
+function renderBenchmark(report) {
+  const section = element("section", undefined, "complexity-report");
+  section.append(element("h3", "Benchmark"));
+  content.append(section);
+  if (report.message) {
+    section.append(element("p", report.message));
+    return;
+  }
+  section.append(element("p", report.description, "muted"));
+  if (report.failure) {
+    const { size, status, stderr } = report.failure;
+    section.append(element("p", "Benchmark stopped at n = " + size + " · " + status));
+    if (stderr) section.append(element("pre", stderr, "complexity-error"));
+  } else {
+    const metrics = element("dl", undefined, "result-metrics");
+    for (const [label, value] of [["Time growth", report.time_growth], ["Memory growth", report.memory_growth]]) {
+      const metric = element("div");
+      metric.append(element("dt", label), element("dd", value));
+      metrics.append(metric);
+    }
+    section.append(metrics);
+  }
+  if (!report.samples.length) return;
+  const table = element("table", undefined, "complexity-table");
+  const header = table.createTHead().insertRow();
+  for (const label of ["Input size (n)", "Median time", "Peak Python allocation"]) {
+    const cell = element("th", label);
+    cell.scope = "col";
+    header.append(cell);
+  }
+  const body = table.createTBody();
+  for (const sample of report.samples) {
+    const time = sample.time_ns < 1000000
+      ? (sample.time_ns / 1000).toFixed(2) + " µs"
+      : (sample.time_ns / 1000000).toFixed(2) + " ms";
+    const memory = sample.allocated_bytes < 1024
+      ? sample.allocated_bytes + " B"
+      : (sample.allocated_bytes / 1024).toFixed(2) + " KiB";
+    const row = body.insertRow();
+    for (const value of [sample.size.toLocaleString(), time, memory]) row.append(element("td", value));
+  }
+  section.append(table, element("p",
+    "Growth estimates apply to these inputs. Each time is the median of five calls. Memory measures peak Python allocations during a separate call.",
+    "muted"));
+}
+
+async function runComplexity(mode) {
+  if (state.busy || !state.problem) return;
+  const code = editor.getValue();
+  const body = { problem_id: state.problem.id, code, mode };
+  state.busy = true;
+  state.complexityRunning = mode;
+  renderView();
+  let result;
+  try {
+    result = await api("complexity", body);
+  } catch (error) {
+    result = { message: error.message };
+  } finally {
+    state.busy = false;
+    state.complexityRunning = null;
+  }
+  if (code === editor.getValue()) {
+    state.complexityCode = code;
+    state.complexity[mode] = result;
+  } else {
+    announce("Draft changed during analysis. Run again to analyze the current code.");
+  }
+  if (state.tab === "complexity") {
+    const restoreFocus = document.activeElement === document.body;
+    renderView();
+    if (restoreFocus) content.querySelector('[data-complexity-action="' + mode + '"]').focus();
+  } else updateButtons();
+}
+
 function renderView() {
   updateButtons();
   content.replaceChildren();
   if (!state.problem) return;
-  const views = { samples: renderSamples, hidden: renderHidden, custom: renderCustom, results: renderResults, history: renderHistory };
+  const views = { samples: renderSamples, hidden: renderHidden, custom: renderCustom,
+    results: renderResults, complexity: renderComplexity, history: renderHistory };
   views[state.tab]();
 }
 
@@ -531,9 +719,10 @@ async function saveAttempt(action) {
   const trigger = $(action);
   if (state.busy || !state.problem || trigger.disabled) return;
   const problem = state.problem;
-  const body = { problem_id: problem.id, code: code.value };
+  const body = { problem_id: problem.id, code: editor.getValue() };
   state.busy = true;
   if (run) {
+    revealTests();
     if (action === "run") {
       body.scope = $("run-scope").value;
       if (body.scope !== "samples") body.cases = state.cases;
@@ -550,7 +739,7 @@ async function saveAttempt(action) {
     if (run) {
       state.output = result;
       if (result.unlocked) {
-        if (!problem.completed) announce("Problem complete. Hidden cases unlocked.");
+        if (!problem.completed) announce("Problem complete. Private cases unlocked.");
         problem.completed = true;
         problem.hidden = result.unlocked;
       }
@@ -573,14 +762,12 @@ $("run").addEventListener("click", () => saveAttempt("run"));
 $("submit").addEventListener("click", () => saveAttempt("submit"));
 $("save").addEventListener("click", () => saveAttempt("save"));
 $("reset").addEventListener("click", () => {
-  if (code.value === state.problem.starter || !window.confirm("Replace the current draft with the starter code?")) return;
-  code.value = state.problem.starter;
-  code.setSelectionRange(0, 0);
-  updateDraft();
-  code.focus();
+  if (editor.getValue() === state.problem.starter || !window.confirm("Replace the current draft with the starter code?")) return;
+  editor.setValue(state.problem.starter);
+  editor.focus();
 });
 document.addEventListener("keydown", (event) => {
-  if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
+  if (!event.defaultPrevented && (event.metaKey || event.ctrlKey) && event.key === "Enter") {
     event.preventDefault();
     saveAttempt("run");
   }

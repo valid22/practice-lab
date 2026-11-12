@@ -2,5 +2,17 @@
   "openai": {
     "name": "OpenAI",
     "logo": "openai.svg"
+  },
+  "amazon": {
+    "name": "Amazon",
+    "logo": "amazon.svg"
+  },
+  "uber": {
+    "name": "Uber",
+    "logo": "uber.svg"
+  },
+  "microsoft": {
+    "name": "Microsoft",
+    "logo": "microsoft.svg"
   }
 }
