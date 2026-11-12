@@ -8,7 +8,6 @@
       "Hash maps"
     ],
     "statement": "Each node in a directed network has at most one outgoing link. Starting at `start_node_id`, follow the links until the current node has nowhere to go or the next link would revisit a node.\n\nReturn the **current node** when either condition occurs. For instance, if you start at 8 and follow `8 → 12 → 19 → 12`, return 19 because taking its outgoing link would revisit 12.\n\n## Function\n\nImplement `compute(start_node_id, from_ids, to_ids)` and return one integer. The two arrays describe links by index. The pair at index `i` gives the link `from_ids[i] → to_ids[i]`.\n\n## Constraints\n\n- Node IDs are integers from 2 through 4,999, with gaps allowed.\n- The arrays have equal length, and each source occurs at most once.\n- No link goes directly from a node to itself.\n- The start node may have no links, even if the input contains links elsewhere.",
-    "source": "https://www.reddit.com/r/InterviewDB/comments/1x011r4/openai_new_grad_coderpad_oa_questions/",
     "starter": "def compute(start_node_id, from_ids, to_ids):\n    # Write your solution here.\n    pass\n",
     "samples": [
       {
@@ -81,6 +80,13 @@
     "function": "compute",
     "companies": [
       "openai"
+    ],
+    "reports": [
+      {
+        "company": "openai",
+        "round": "Online assessment",
+        "url": "https://www.reddit.com/r/InterviewDB/comments/1x011r4/openai_new_grad_coderpad_oa_questions/"
+      }
     ]
   },
   {
@@ -92,7 +98,6 @@
       "Path counting"
     ],
     "statement": "Your town has four types of shop. Count how many routes let you visit **one shop of each type in exactly four stops**. You can start at any shop, and each pair of consecutive stops must share a road.\n\nA route is an ordered list of shop indices. Traversing the same shops in reverse counts as another route. In a town with four differently typed shops connected in a single chain, the answer is 2.\n\n## Function\n\nImplement `count_routes(shops, roads)` and return the number of valid routes. The value `shops[i]` gives shop `i`'s type, numbered 0 through 3. Each pair `[u, v]` in `roads` connects shops `u` and `v` in both directions.\n\n## Constraints\n\n- There are 1 to 50 shops and at most 250 roads.\n- Each road joins two different shops. Each unordered pair appears at most once.\n- Shop types may be missing or may occur more than once.",
-    "source": "https://www.reddit.com/r/InterviewDB/comments/1x011r4/openai_new_grad_coderpad_oa_questions/",
     "starter": "def count_routes(shops, roads):\n    # Write your solution here.\n    pass\n",
     "samples": [
       {
@@ -216,6 +221,13 @@
     "function": "count_routes",
     "companies": [
       "openai"
+    ],
+    "reports": [
+      {
+        "company": "openai",
+        "round": "Online assessment",
+        "url": "https://www.reddit.com/r/InterviewDB/comments/1x011r4/openai_new_grad_coderpad_oa_questions/"
+      }
     ]
   },
   {
@@ -227,7 +239,6 @@
       "Simulation"
     ],
     "statement": "A row of microorganisms evolves in rounds. Each organism has a family letter and a positive size. Find the family and size of the largest survivor after the row stops changing.\n\n## Round rules\n\n- Give surviving organisms one turn each, scanning from left to right. An organism removed before its turn loses that turn.\n- On its turn, an organism checks its current left neighbor, then its current right neighbor. It eats the first neighbor that belongs to a different family, is strictly smaller, and has not eaten this round.\n- Remove the target and add its size to the eater immediately. Continue with the organism now directly to the eater's right. Later turns use the updated row.\n- Clear the record of which survivors ate at the start of the next round. Stop after a full round with no removals.\n\nFor example, with `A 2, B 6, C 4`, B eats A first and reaches size 8. On the next round B eats C, leaving `B 12`.\n\n## Function\n\nImplement `largest_survivor(organisms)`. Each entry in `organisms` is a pair `[family, size]` in left-to-right order. Return the winning family and size as a string, with a single space between them.\n\n## Constraints\n\n- There are 1 to 20 organisms.\n- Each family is one uppercase English letter. Sizes are integers from 1 through 1,000,000.\n- The final maximum is unique.",
-    "source": "https://www.reddit.com/r/InterviewDB/comments/1x011r4/openai_new_grad_coderpad_oa_questions/",
     "starter": "def largest_survivor(organisms):\n    # Write your solution here.\n    pass\n",
     "samples": [
       {
@@ -338,6 +349,1066 @@
     "function": "largest_survivor",
     "companies": [
       "openai"
+    ],
+    "reports": [
+      {
+        "company": "openai",
+        "round": "Online assessment",
+        "url": "https://www.reddit.com/r/InterviewDB/comments/1x011r4/openai_new_grad_coderpad_oa_questions/"
+      }
+    ]
+  },
+  {
+    "id": "reachable-by-road",
+    "title": "Reachable by Road",
+    "difficulty": "Easy",
+    "topics": [
+      "Graphs",
+      "BFS",
+      "DFS"
+    ],
+    "statement": "Return true if you can travel from start to target using roads. A trip of zero roads is allowed.\n\n## Function\n\nImplement `can_reach(n, roads, start, target)`.\n\n## Constraints\n\nNodes are numbered from 0 to n − 1. Each road [u, v] is undirected. Roads have distinct endpoints and no duplicates. There are 1 to 10,000 nodes and at most 30,000 roads.",
+    "starter": "def can_reach(n, roads, start, target):\n    # Write your solution here.\n    pass\n",
+    "samples": [
+      {
+        "name": "Indirect trip",
+        "args": [
+          4,
+          [
+            [
+              1,
+              0
+            ],
+            [
+              2,
+              1
+            ]
+          ],
+          0,
+          2
+        ],
+        "expected": true
+      },
+      {
+        "name": "Different components",
+        "args": [
+          4,
+          [
+            [
+              0,
+              1
+            ],
+            [
+              2,
+              3
+            ]
+          ],
+          0,
+          3
+        ],
+        "expected": false
+      }
+    ],
+    "function": "can_reach",
+    "companies": []
+  },
+  {
+    "id": "three-shop-routes",
+    "title": "Count Three Shop Routes",
+    "difficulty": "Easy",
+    "topics": [
+      "Graphs",
+      "Path counting"
+    ],
+    "statement": "Count routes with exactly three stops, one shop of each type 0, 1, and 2. Routes are ordered lists of shop indices. The two directions count separately, and you may start at any shop.\n\n## Function\n\nImplement `count_three_routes(shops, roads)`.\n\n## Constraints\n\nShop indices run from 0 through len(shops) − 1. Roads are undirected, with distinct endpoints and no duplicates. There are 1 to 300 shops and at most 4,000 roads. Types can repeat or be absent.",
+    "starter": "def count_three_routes(shops, roads):\n    # Write your solution here.\n    pass\n",
+    "samples": [
+      {
+        "name": "Two choices for an endpoint",
+        "args": [
+          [
+            0,
+            1,
+            2,
+            0
+          ],
+          [
+            [
+              0,
+              1
+            ],
+            [
+              1,
+              2
+            ],
+            [
+              3,
+              1
+            ]
+          ]
+        ],
+        "expected": 4
+      },
+      {
+        "name": "Three types in a triangle",
+        "args": [
+          [
+            0,
+            1,
+            2
+          ],
+          [
+            [
+              0,
+              1
+            ],
+            [
+              1,
+              2
+            ],
+            [
+              2,
+              0
+            ]
+          ]
+        ],
+        "expected": 6
+      }
+    ],
+    "function": "count_three_routes",
+    "companies": []
+  },
+  {
+    "id": "number-of-islands",
+    "title": "Number of Islands",
+    "difficulty": "Medium",
+    "topics": [
+      "Graphs",
+      "Connected components",
+      "Grid traversal"
+    ],
+    "statement": "A grid contains land (1) and water (0). Two land squares belong to the same island if you can walk between them using only land and horizontal or vertical steps. Return the number of islands.\n\n## Function\n\nImplement `count_islands(grid)`.\n\n## Constraints\n\nThe grid is rectangular, with 1 to 200 rows and 1 to 200 columns. Entries are integers.",
+    "starter": "def count_islands(grid):\n    # Write your solution here.\n    pass\n",
+    "samples": [
+      {
+        "name": "Diagonal contact",
+        "args": [
+          [
+            [
+              1,
+              0
+            ],
+            [
+              0,
+              1
+            ]
+          ]
+        ],
+        "expected": 2
+      },
+      {
+        "name": "A single bent island",
+        "args": [
+          [
+            [
+              1,
+              0,
+              0
+            ],
+            [
+              1,
+              1,
+              0
+            ]
+          ]
+        ],
+        "expected": 1
+      }
+    ],
+    "function": "count_islands",
+    "companies": [
+      "amazon"
+    ],
+    "reports": [
+      {
+        "company": "amazon",
+        "round": "Online assessment",
+        "url": "https://leetcode.com/discuss/post/528382/amazon-sde-1-palo-alto-feb-2020-reject/"
+      }
+    ]
+  },
+  {
+    "id": "team-dominance-order",
+    "title": "Team Dominance Order",
+    "difficulty": "Medium",
+    "topics": [
+      "Graphs",
+      "Topological sort",
+      "Cycle detection"
+    ],
+    "statement": "Each result [a, b] requires team a to appear before team b. Return true if there is a single ordering of all n teams that satisfies every result.\n\n## Function\n\nImplement `has_dominance_order(n, results)`.\n\n## Constraints\n\nTeams are numbered 0 through n − 1. There are 1 to 10,000 teams and at most 30,000 distinct results. Each result contains two distinct teams.",
+    "starter": "def has_dominance_order(n, results):\n    # Write your solution here.\n    pass\n",
+    "samples": [
+      {
+        "name": "Two teams precede a third",
+        "args": [
+          4,
+          [
+            [
+              0,
+              2
+            ],
+            [
+              1,
+              2
+            ]
+          ]
+        ],
+        "expected": true
+      },
+      {
+        "name": "Conflicting results",
+        "args": [
+          3,
+          [
+            [
+              0,
+              1
+            ],
+            [
+              1,
+              2
+            ],
+            [
+              2,
+              0
+            ]
+          ]
+        ],
+        "expected": false
+      }
+    ],
+    "function": "has_dominance_order",
+    "companies": [
+      "amazon"
+    ],
+    "reports": [
+      {
+        "company": "amazon",
+        "round": "Technical interview",
+        "url": "https://leetcode.com/discuss/post/7320620/amazon-sde-intern6m-interview-experience-6rr7/"
+      }
+    ]
+  },
+  {
+    "id": "dag-route-count",
+    "title": "Count Routes in a DAG",
+    "difficulty": "Medium",
+    "topics": [
+      "Graphs",
+      "Path counting",
+      "Dynamic programming",
+      "Topological sort"
+    ],
+    "statement": "Count the directed routes from start to target. Different sequences of nodes count separately. When start equals target, count the route of length zero. Return the count modulo 1,000,000,007.\n\n## Function\n\nImplement `count_dag_routes(n, edges, start, target)`.\n\n## Constraints\n\nThere are 1 to 10,000 nodes numbered from 0 to n − 1 and at most 30,000 distinct directed edges [u, v]. The graph is acyclic. Node numbering does not imply an edge direction.",
+    "starter": "def count_dag_routes(n, edges, start, target):\n    # Write your solution here.\n    pass\n",
+    "samples": [
+      {
+        "name": "Two branches and a shortcut",
+        "args": [
+          4,
+          [
+            [
+              0,
+              1
+            ],
+            [
+              0,
+              2
+            ],
+            [
+              1,
+              3
+            ],
+            [
+              2,
+              3
+            ],
+            [
+              0,
+              3
+            ]
+          ],
+          0,
+          3
+        ],
+        "expected": 3
+      },
+      {
+        "name": "Direction matters",
+        "args": [
+          2,
+          [
+            [
+              1,
+              0
+            ]
+          ],
+          0,
+          1
+        ],
+        "expected": 0
+      }
+    ],
+    "function": "count_dag_routes",
+    "companies": []
+  },
+  {
+    "id": "farthest-data-center",
+    "title": "Farthest City from a Data Center",
+    "difficulty": "Medium",
+    "topics": [
+      "Graphs",
+      "BFS",
+      "Shortest paths"
+    ],
+    "statement": "A city’s distance is the fewest roads needed to reach any data center. Return the city with the largest such distance. Break ties by returning the smallest city index.\n\n## Function\n\nImplement `farthest_city(n, roads, centers)`.\n\n## Constraints\n\nNodes are numbered from 0 to n − 1. Each road [u, v] is undirected. Roads have distinct endpoints and no duplicates. There are 1 to 10,000 cities and at most 30,000 roads. The network is connected. Centers contains at least one city and no duplicates.",
+    "starter": "def farthest_city(n, roads, centers):\n    # Write your solution here.\n    pass\n",
+    "samples": [
+      {
+        "name": "Centers at both ends",
+        "args": [
+          5,
+          [
+            [
+              0,
+              1
+            ],
+            [
+              1,
+              2
+            ],
+            [
+              2,
+              3
+            ],
+            [
+              3,
+              4
+            ]
+          ],
+          [
+            0,
+            4
+          ]
+        ],
+        "expected": 2
+      },
+      {
+        "name": "Tie between two cities",
+        "args": [
+          3,
+          [
+            [
+              2,
+              0
+            ],
+            [
+              2,
+              1
+            ]
+          ],
+          [
+            2
+          ]
+        ],
+        "expected": 0
+      }
+    ],
+    "function": "farthest_city",
+    "companies": [
+      "amazon"
+    ],
+    "reports": [
+      {
+        "company": "amazon",
+        "round": "Technical screen",
+        "url": "https://leetcode.com/discuss/post/6327137/"
+      }
+    ]
+  },
+  {
+    "id": "fastest-route-count",
+    "title": "Count Fastest Routes",
+    "difficulty": "Medium",
+    "topics": [
+      "Graphs",
+      "Path counting",
+      "Shortest paths",
+      "Dijkstra"
+    ],
+    "statement": "Travel from node 0 to node n − 1. Each road [u, v, time] works in both directions and adds its travel time to the trip. Return how many routes achieve the minimum possible travel time, modulo 1,000,000,007. Return zero if the destination is unreachable. The empty route from a node to itself counts once.\n\n## Function\n\nImplement `count_fastest_routes(n, roads)`.\n\n## Constraints\n\nThere are 1 to 2,000 nodes numbered from 0 to n − 1 and at most 20,000 roads. Each road has distinct endpoints, each unordered pair occurs at most once, and times are integers from 1 to 1,000,000,000.",
+    "starter": "def count_fastest_routes(n, roads):\n    # Write your solution here.\n    pass\n",
+    "samples": [
+      {
+        "name": "Three equally fast routes",
+        "args": [
+          4,
+          [
+            [
+              0,
+              1,
+              2
+            ],
+            [
+              0,
+              2,
+              1
+            ],
+            [
+              1,
+              3,
+              2
+            ],
+            [
+              2,
+              3,
+              3
+            ],
+            [
+              0,
+              3,
+              4
+            ]
+          ]
+        ],
+        "expected": 3
+      },
+      {
+        "name": "Fewer roads can be slower",
+        "args": [
+          3,
+          [
+            [
+              0,
+              2,
+              9
+            ],
+            [
+              0,
+              1,
+              2
+            ],
+            [
+              1,
+              2,
+              2
+            ]
+          ]
+        ],
+        "expected": 1
+      }
+    ],
+    "function": "count_fastest_routes",
+    "companies": [],
+    "source": "https://leetcode.com/problems/number-of-ways-to-arrive-at-destination/",
+    "source_kind": "public-problem"
+  },
+  {
+    "id": "all-shop-types",
+    "title": "Count Routes Through Every Shop Type",
+    "difficulty": "Hard",
+    "topics": [
+      "Graphs",
+      "Path counting",
+      "Bitmask DP"
+    ],
+    "statement": "There are k required shop types, numbered 0 through k − 1. Count routes that visit one shop of each type in exactly k stops. Routes are ordered lists of shop indices. The two directions count separately, and you may start at any shop. For k = 1, count each single-stop route once. Return the count modulo 1,000,000,007.\n\n## Function\n\nImplement `count_typed_routes(shops, roads, k)`.\n\n## Constraints\n\nShop indices run from 0 through len(shops) − 1. Roads are undirected, with distinct endpoints and no duplicates. There are 1 to 60 shops, at most 600 roads, and 1 to 10 required types. A type may be absent.",
+    "starter": "def count_typed_routes(shops, roads, k):\n    # Write your solution here.\n    pass\n",
+    "samples": [
+      {
+        "name": "Six permutations",
+        "args": [
+          [
+            0,
+            1,
+            2
+          ],
+          [
+            [
+              0,
+              1
+            ],
+            [
+              1,
+              2
+            ],
+            [
+              2,
+              0
+            ]
+          ],
+          3
+        ],
+        "expected": 6
+      },
+      {
+        "name": "Missing required type",
+        "args": [
+          [
+            0,
+            1,
+            0
+          ],
+          [
+            [
+              0,
+              1
+            ],
+            [
+              1,
+              2
+            ]
+          ],
+          3
+        ],
+        "expected": 0
+      },
+      {
+        "name": "One-stop routes",
+        "args": [
+          [
+            0,
+            0
+          ],
+          [
+            [
+              0,
+              1
+            ]
+          ],
+          1
+        ],
+        "expected": 2
+      }
+    ],
+    "function": "count_typed_routes",
+    "companies": []
+  },
+  {
+    "id": "bus-routes",
+    "title": "Bus Routes",
+    "difficulty": "Hard",
+    "topics": [
+      "Graphs",
+      "BFS",
+      "Shortest paths"
+    ],
+    "statement": "Each route lists the stops served by one bus that loops indefinitely. At any stop on a route, you can board its bus and ride to any other stop on that route. You can change buses at a shared stop. Return the minimum number of boardings needed to reach target from start, or −1 if impossible. If start equals target, return 0.\n\n## Function\n\nImplement `minimum_buses(routes, start, target)`.\n\n## Constraints\n\nThere are up to 500 routes with at most 100,000 stop entries in total. Each route is nonempty and lists each of its stops once. Stop IDs are integers between 0 and 1,000,000. Start and target may be absent from every route.",
+    "starter": "def minimum_buses(routes, start, target):\n    # Write your solution here.\n    pass\n",
+    "samples": [
+      {
+        "name": "One transfer",
+        "args": [
+          [
+            [
+              10,
+              20,
+              30
+            ],
+            [
+              30,
+              40,
+              50
+            ]
+          ],
+          20,
+          50
+        ],
+        "expected": 2
+      },
+      {
+        "name": "No transfer available",
+        "args": [
+          [
+            [
+              0,
+              1
+            ],
+            [
+              2,
+              3
+            ]
+          ],
+          0,
+          3
+        ],
+        "expected": -1
+      }
+    ],
+    "function": "minimum_buses",
+    "companies": [
+      "uber"
+    ],
+    "reports": [
+      {
+        "company": "uber",
+        "round": "Technical interview",
+        "url": "https://leetcode.com/discuss/post/1975772/uber-software-engineer-l4-bangalore-mar-2022-reject/"
+      }
+    ]
+  },
+  {
+    "id": "spreadsheet-dependencies",
+    "title": "Spreadsheet Dependency Updates",
+    "difficulty": "Hard",
+    "topics": [
+      "Graphs",
+      "Dependency graphs",
+      "Cycle detection",
+      "Caching"
+    ],
+    "statement": "Run spreadsheet commands in order. `[\"set\", cell, integer]` stores a constant. `[\"sum\", cell, references]` replaces a cell with a sum of the listed cells, counting repeated references each time. References read as zero until assigned. Reject any sum that would create a dependency cycle, preserving the old sheet. `[\"get\", cell]` reads the current value, including any changes to dependencies. Return one item per command. Append 1 for accepted writes, 0 for rejected writes, and the cell value for a read.\n\n## Function\n\nImplement `run_sheet(operations)`.\n\n## Constraints\n\nThere are 1 to 15,000 commands and up to 2,000 distinct case-sensitive cell names. Reference lists contain 1 to 8 names. Constants and all cell values fit in signed 64-bit integers. The returned list occupies at most 30,000 bytes when serialized as JSON without spaces. Repeated reads can follow updates to cells unrelated to the queried dependency chain.",
+    "starter": "def run_sheet(operations):\n    # Write your solution here.\n    pass\n",
+    "samples": [
+      {
+        "name": "Propagate an update",
+        "args": [
+          [
+            [
+              "set",
+              "A",
+              2
+            ],
+            [
+              "sum",
+              "B",
+              [
+                "A",
+                "A"
+              ]
+            ],
+            [
+              "get",
+              "B"
+            ],
+            [
+              "set",
+              "A",
+              3
+            ],
+            [
+              "get",
+              "B"
+            ]
+          ]
+        ],
+        "expected": [
+          1,
+          1,
+          4,
+          1,
+          6
+        ]
+      },
+      {
+        "name": "Reject a cycle and keep the old value",
+        "args": [
+          [
+            [
+              "set",
+              "A",
+              7
+            ],
+            [
+              "sum",
+              "B",
+              [
+                "A"
+              ]
+            ],
+            [
+              "sum",
+              "A",
+              [
+                "B"
+              ]
+            ],
+            [
+              "get",
+              "A"
+            ]
+          ]
+        ],
+        "expected": [
+          1,
+          1,
+          0,
+          7
+        ]
+      }
+    ],
+    "function": "run_sheet",
+    "companies": [
+      "openai"
+    ],
+    "source": "https://www.hellointerview.com/community/questions/spreadsheet-formulas-graph/cmbsl1b4r004x07ad388lxwci",
+    "source_kind": "interview-platform"
+  },
+  {
+    "id": "as-before-bs",
+    "title": "All A’s Before B’s",
+    "difficulty": "Easy",
+    "topics": [
+      "Strings"
+    ],
+    "statement": "Return true if every a occurs before every b. If either letter is absent, return true.\n\n## Function\n\nImplement `as_before_bs(text)`.\n\n## Constraints\n\nThe string contains 1 to 300,000 characters, each either lowercase a or lowercase b.",
+    "starter": "def as_before_bs(text):\n    # Write your solution here.\n    pass\n",
+    "samples": [
+      {
+        "name": "Ordered groups",
+        "args": [
+          "aaab"
+        ],
+        "expected": true
+      },
+      {
+        "name": "An a after a b",
+        "args": [
+          "abbba"
+        ],
+        "expected": false
+      }
+    ],
+    "function": "as_before_bs",
+    "companies": [
+      "microsoft"
+    ],
+    "reports": [
+      {
+        "company": "microsoft",
+        "round": "Online assessment",
+        "url": "https://leetcode.com/discuss/post/1957999/microsoft-oa-march-2022/"
+      }
+    ]
+  },
+  {
+    "id": "merge-intervals",
+    "title": "Merge Intervals",
+    "difficulty": "Medium",
+    "topics": [
+      "Intervals",
+      "Sorting"
+    ],
+    "statement": "Each pair [start, end] describes a closed interval. Return the merged intervals in ascending order of start. Merge overlapping intervals and intervals that share an endpoint.\n\n## Function\n\nImplement `merge_intervals(intervals)`.\n\n## Constraints\n\nThere are 1 to 2,000 intervals. Endpoints are integers from −10,000 to 10,000 and start is at most end. The input may be unsorted.",
+    "starter": "def merge_intervals(intervals):\n    # Write your solution here.\n    pass\n",
+    "samples": [
+      {
+        "name": "Merge through a shared endpoint",
+        "args": [
+          [
+            [
+              8,
+              10
+            ],
+            [
+              2,
+              4
+            ],
+            [
+              4,
+              8
+            ]
+          ]
+        ],
+        "expected": [
+          [
+            2,
+            10
+          ]
+        ]
+      },
+      {
+        "name": "Nested and separate intervals",
+        "args": [
+          [
+            [
+              -4,
+              5
+            ],
+            [
+              0,
+              1
+            ],
+            [
+              7,
+              8
+            ]
+          ]
+        ],
+        "expected": [
+          [
+            -4,
+            5
+          ],
+          [
+            7,
+            8
+          ]
+        ]
+      }
+    ],
+    "function": "merge_intervals",
+    "companies": [
+      "amazon",
+      "microsoft"
+    ],
+    "reports": [
+      {
+        "company": "amazon",
+        "round": "Online assessment",
+        "url": "https://leetcode.com/discuss/post/7710904/",
+        "detail": "Candidate reported a variant."
+      },
+      {
+        "company": "microsoft",
+        "round": "Technical interview",
+        "url": "https://leetcode.com/discuss/post/5369052/"
+      }
+    ]
+  },
+  {
+    "id": "active-session-counts",
+    "title": "Count Active Sessions",
+    "difficulty": "Medium",
+    "topics": [
+      "Hash maps",
+      "Heaps",
+      "Simulation"
+    ],
+    "statement": "Process commands in timestamp order. `[\"issue\", token, time]` assigns the token a new expiration time of time + ttl, replacing any previous expiration. `[\"renew\", token, time]` sets its expiration to time + ttl only if it is active. `[\"count\", time]` records the number of active tokens. A token is active when its expiration is strictly greater than time. Return the recorded counts in order.\n\n## Function\n\nImplement `active_sessions(ttl, operations)`.\n\n## Constraints\n\nThere are 1 to 20,000 commands, at most 5,000 counts, and 1 ≤ ttl ≤ 1,000,000,000. Times are nondecreasing integers from 0 to 1,000,000,000. Tokens are nonempty strings of up to 16 letters or digits. At equal timestamps, use input order.",
+    "starter": "def active_sessions(ttl, operations):\n    # Write your solution here.\n    pass\n",
+    "samples": [
+      {
+        "name": "Renewal extends a session",
+        "args": [
+          5,
+          [
+            [
+              "issue",
+              "a",
+              0
+            ],
+            [
+              "renew",
+              "a",
+              3
+            ],
+            [
+              "count",
+              5
+            ],
+            [
+              "count",
+              8
+            ]
+          ]
+        ],
+        "expected": [
+          1,
+          0
+        ]
+      },
+      {
+        "name": "Expired token cannot be renewed",
+        "args": [
+          2,
+          [
+            [
+              "issue",
+              "a",
+              0
+            ],
+            [
+              "renew",
+              "a",
+              2
+            ],
+            [
+              "count",
+              2
+            ]
+          ]
+        ],
+        "expected": [
+          0
+        ]
+      }
+    ],
+    "function": "active_sessions",
+    "companies": [
+      "microsoft"
+    ],
+    "reports": [
+      {
+        "company": "microsoft",
+        "round": "Online assessment",
+        "url": "https://leetcode.com/discuss/post/7034504/microsoft-oa-sde-1-july-2025-platform-ha-nn0x/"
+      }
+    ]
+  },
+  {
+    "id": "resumable-matrix-iterator",
+    "title": "Resumable Matrix Iterator",
+    "difficulty": "Medium",
+    "topics": [
+      "Iterators",
+      "State management"
+    ],
+    "statement": "Read a ragged matrix left to right, one row at a time, skipping empty rows. `[\"next\"]` appends the next integer to the result, or null at exhaustion. `[\"save\"]` records the cursor under the next snapshot ID, starting at 0. `[\"restore\", id]` moves the cursor back to that snapshot. Snapshots can be reused and remain available after a restore. Return the list produced by next commands.\n\n## Function\n\nImplement `run_iterator(rows, operations)`.\n\n## Constraints\n\nThere are 0 to 10,000 rows, at most 20,000 matrix entries, and 1 to 30,000 operations including at most 5,000 next commands. Entries are integers from −100 to 100. Restore IDs always refer to previously saved cursors.",
+    "starter": "def run_iterator(rows, operations):\n    # Write your solution here.\n    pass\n",
+    "samples": [
+      {
+        "name": "Replay from a checkpoint",
+        "args": [
+          [
+            [],
+            [
+              4,
+              9
+            ],
+            [],
+            [
+              2
+            ]
+          ],
+          [
+            [
+              "next"
+            ],
+            [
+              "save"
+            ],
+            [
+              "next"
+            ],
+            [
+              "restore",
+              0
+            ],
+            [
+              "next"
+            ],
+            [
+              "next"
+            ],
+            [
+              "next"
+            ]
+          ]
+        ],
+        "expected": [
+          4,
+          9,
+          9,
+          2,
+          null
+        ]
+      },
+      {
+        "name": "Empty matrix",
+        "args": [
+          [
+            [],
+            []
+          ],
+          [
+            [
+              "save"
+            ],
+            [
+              "next"
+            ],
+            [
+              "restore",
+              0
+            ],
+            [
+              "next"
+            ]
+          ]
+        ],
+        "expected": [
+          null,
+          null
+        ]
+      }
+    ],
+    "function": "run_iterator",
+    "companies": [
+      "openai"
+    ],
+    "reports": [
+      {
+        "company": "openai",
+        "round": "Onsite coding",
+        "url": "https://www.inbyte.org/interview/openai/resumable-iterator",
+        "detail": "Inbyte attributes the question to OpenAI. This adaptation covers the two-dimensional stage."
+      }
+    ]
+  },
+  {
+    "id": "skill-subsequence",
+    "title": "Longest Skill Subsequence with Limited Changes",
+    "difficulty": "Hard",
+    "topics": [
+      "Dynamic programming",
+      "Hash maps"
+    ],
+    "statement": "Choose a subsequence of skills in input order. A change occurs at every pair of consecutive chosen skills with different values. Return the largest possible subsequence length with at most k changes.\n\n## Function\n\nImplement `longest_skill_subsequence(skills, k)`.\n\n## Constraints\n\nThere are 1 to 10,000 skills. Each skill is an integer from 0 to 1,000,000,000. The change budget k is an integer from 0 to 20.",
+    "starter": "def longest_skill_subsequence(skills, k):\n    # Write your solution here.\n    pass\n",
+    "samples": [
+      {
+        "name": "Skip a skill to stay within budget",
+        "args": [
+          [
+            1,
+            1,
+            2,
+            3,
+            2,
+            1
+          ],
+          2
+        ],
+        "expected": 5
+      },
+      {
+        "name": "No changes allowed",
+        "args": [
+          [
+            8,
+            4,
+            8,
+            4,
+            8
+          ],
+          0
+        ],
+        "expected": 3
+      }
+    ],
+    "function": "longest_skill_subsequence",
+    "companies": [
+      "microsoft"
+    ],
+    "reports": [
+      {
+        "company": "microsoft",
+        "round": "Online assessment",
+        "url": "https://leetcode.com/discuss/post/7111429/",
+        "detail": "The candidate recalled the core task. This version supplies explicit limits."
+      }
     ]
   }
 ]

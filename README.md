@@ -35,7 +35,7 @@ The editor inserts four spaces on **Tab** and carries indentation on **Enter**. 
 
 ## Add another problem
 
-The catalog lives in `problems.json`. Add an object with a unique ID, title, Markdown statement, function name, starter code, topics, and public `samples`. Each sample has a name, an `args` array, and an `expected` JSON value. Configure hidden cases with a factory keyed by the problem ID in `case_factory.py`. To tag a problem, add the company IDs to its `companies` array. Define company names and optional logo filenames in `companies.json`, with logos stored in `web/company-logos/`. Restart the Python server or rerun `docker compose up -d --build` to load catalog changes.
+The catalog lives in `problems.json`. Add an object with a unique ID, title, Markdown statement, function name, starter code, topics, and public `samples`. Each sample has a name, an `args` array, and an `expected` JSON value. Configure hidden cases with a factory keyed by the problem ID in `case_factory.py`. To tag a problem, add the company IDs to its `companies` array. Add a `reports` entry with `company`, `round`, and `url` for each source. Use the optional `detail` field to describe how a reported variant differs. Define company names and optional logo filenames in `companies.json`, with logos stored in `web/company-logos/`. Restart the Python server or rerun `docker compose up -d --build` to load catalog changes.
 
 ## Local data
 

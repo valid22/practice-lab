@@ -152,8 +152,11 @@ function renderProblem() {
   const problem = state.problem;
   $("problem-title").textContent = problem.title;
   const labelsNode = $("problem-labels");
-  labelsNode.replaceChildren(element("span", problem.source ? "Reconstructed practice" : "Imported problem",
-    problem.source ? "badge reconstructed" : "badge"));
+  const reports = problem.reports || [];
+  const hasSource = Boolean(problem.source || reports.length);
+  const publicProblem = problem.source_kind === "public-problem";
+  const sourceLabel = !hasSource ? "Practice drill" : publicProblem ? "Public problem adaptation" : "Reconstructed practice";
+  labelsNode.replaceChildren(element("span", sourceLabel, hasSource ? "badge reconstructed" : "badge"));
   if (problem.companies.length) labelsNode.append(companyTags(problem.companies, true));
   if (problem.difficulty) {
     const difficulty = element("span", problem.difficulty, "badge");
@@ -173,8 +176,32 @@ function renderProblem() {
     details.append(element("summary", test.name), caseGrid(test));
     examples.append(details);
   });
-  $("source-note").hidden = !problem.source;
-  if (problem.source) $("source").href = problem.source;
+  $("source-note").hidden = !hasSource;
+  $("source-links").replaceChildren();
+  if (hasSource) {
+    $("source-heading").textContent = sourceLabel;
+    $("source-description").textContent = publicProblem
+      ? "Adapted from a published coding problem."
+      : problem.source_kind === "interview-platform"
+        ? "Adapted from a question attributed to OpenAI by Hello Interview."
+        : "Practice versions based on publicly reported questions.";
+    const sources = reports.length ? reports : [{
+      url: problem.source,
+      label: publicProblem ? "View the original problem" : "View the interview source",
+    }];
+    for (const source of sources) {
+      const company = problem.companies.find(({ id }) => id === source.company);
+      const label = source.label || [company?.name, source.round].filter(Boolean).join(" · ");
+      const link = element("a", label);
+      link.href = source.url;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      const item = element("li");
+      item.append(link);
+      if (source.detail) item.append(" — " + source.detail);
+      $("source-links").append(item);
+    }
+  }
   $("sample-count").textContent = problem.samples.length ? String(problem.samples.length) : "";
   document.querySelector(".statement").scrollTop = 0;
 }
